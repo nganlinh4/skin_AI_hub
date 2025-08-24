@@ -166,6 +166,9 @@ mlruns/
 # datasets/
 # checkpoints/
 
+# Data directory - exclude large image datasets
+data/
+
 # IDE and editor files
 .vscode/
 .idea/
