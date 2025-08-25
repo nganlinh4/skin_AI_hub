@@ -169,6 +169,27 @@ mlruns/
 # Data directory - exclude large image datasets
 data/
 
+# Model files and training outputs
+*.pth
+*.pt
+*.h5
+*.hdf5
+skin_classifier_model.pth
+
+# Generated visualizations and results
+*.png
+*.jpg
+*.jpeg
+attention_maps/
+attention_maps_backup/
+training_history.png
+confusion_matrix.png
+
+# Virtual environment
+skin_venv/
+venv/
+env/
+
 # IDE and editor files
 .vscode/
 .idea/
