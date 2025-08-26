@@ -1,0 +1,74 @@
+{
+  "model": {
+    "model_id": "google/medgemma-4b-it",
+    "default_type": "original",
+    "quantization": {
+      "load_in_4bit": true,
+      "bnb_4bit_use_double_quant": true,
+      "bnb_4bit_quant_type": "nf4",
+      "bnb_4bit_compute_dtype": "torch.bfloat16"
+    },
+    "torch_settings": {
+      "cuda_dtype": "torch.bfloat16",
+      "cpu_dtype": "torch.float32",
+      "device_map": "auto",
+      "attn_implementation": "eager"
+    }
+  },
+  "patient": {
+    "name": "Nguyễn Văn A",
+    "age": 35,
+    "gender": "Nam",
+    "classification": "Bệnh da - Viêm nang lông",
+    "history": "Bệnh nhân có tiền sử viêm nang lông tái phát, đặc biệt trong những tháng hè. Các đợt bệnh trước đây được điều trị thành công bằng kháng sinh tại chỗ. Không có tiền sử dị ứng thuốc. Thỉnh thoảng sử dụng sản phẩm tẩy lông ở vùng bị ảnh hưởng."
+  },
+  "input": {
+    "image_path": "test.jpg"
+  },
+  "generation": {
+    "diagnosis": {
+      "max_new_tokens": 800,
+      "min_new_tokens": 100,
+      "do_sample": true,
+      "temperature": 0.5,
+      "top_p": 0.85,
+      "top_k": 60,
+      "repetition_penalty": 1.1,
+      "length_penalty": 1.0,
+      "no_repeat_ngram_size": 3,
+      "use_cache": true,
+      "early_stopping": false,
+      "pad_token_id": null,
+      "eos_token_id": null
+    },
+    "analysis": {
+      "max_new_tokens": 50,
+      "min_new_tokens": 10,
+      "do_sample": true,
+      "temperature": 0.4,
+      "top_p": 0.8,
+      "repetition_penalty": 1.05,
+      "use_cache": true,
+      "word_limit": 20
+    }
+  },
+  "output": {
+    "reports_directory": "reports",
+    "analysis_filename": "image_analysis_vietnamese.txt",
+    "diagnosis_filename_template": "diagnosis_report_vietnamese_{patient_name}.md"
+  },
+  "environment": {
+    "torch_compile_disable": "1",
+    "pytorch_disable_cuda_compilation": "1",
+    "torch_dynamo_disable": true,
+    "torch_dynamo_suppress_errors": true,
+    "enable_flash_sdp": false,
+    "float32_matmul_precision": "high"
+  },
+  "prompts": {
+    "diagnosis_template": "Trả lời hoàn toàn bằng tiếng Việt. Bạn là bác sĩ da liễu. Phân tích hình ảnh và viết báo cáo chẩn đoán.\n\nBệnh nhân: {patient_name}, {patient_age} tuổi, {patient_gender}\nChẩn đoán ban đầu: {classification_result}\nTiền sử: {skin_history}\n\nViết báo cáo bằng tiếng Việt với các phần:\n1. Mô tả tổn thương da\n2. Chẩn đoán có thể\n3. Điều trị khuyến nghị\n4. Theo dõi\n\nChỉ sử dụng tiếng Việt trong toàn bộ câu trả lời.",
+    "analysis_template": "Trả lời bằng tiếng Việt. Mô tả ngắn gọn tình trạng da trong hình ảnh này cho bệnh nhân {patient_name}. Chỉ sử dụng tiếng Việt.",
+    "system_message_diagnosis": "Bạn là bác sĩ da liễu chuyên nghiệp. Luôn trả lời bằng tiếng Việt.",
+    "system_message_analysis": "Bạn là bác sĩ da liễu. Phân tích hình ảnh y tế và trả lời bằng tiếng Việt."
+  }
+}

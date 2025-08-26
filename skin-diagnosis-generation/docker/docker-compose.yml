@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  medgemma-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3026:3026"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=3026
+      - MODEL_TYPE=4bit
+      - LOG_LEVEL=INFO
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    volumes:
+      - ../reports:/app/reports
+      - ../test.json:/app/test.json
+      - ../test.jpg:/app/test.jpg
+      - model-cache:/app/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3026/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  model-cache:

@@ -1,0 +1,76 @@
+{
+  "model": {
+    "model_id": "google/medgemma-4b-it",
+    "local_model_path": "./models/medgemma-4b-it",
+    "use_local": true,
+    "default_type": "original",
+    "quantization": {
+      "load_in_4bit": true,
+      "bnb_4bit_use_double_quant": true,
+      "bnb_4bit_quant_type": "nf4",
+      "bnb_4bit_compute_dtype": "torch.bfloat16"
+    },
+    "torch_settings": {
+      "cuda_dtype": "torch.bfloat16",
+      "cpu_dtype": "torch.float32",
+      "device_map": "auto",
+      "attn_implementation": "eager"
+    }
+  },
+  "patient": {
+    "name": "Susan",
+    "age": 38,
+    "gender": "Female",
+    "classification": "Infectious Disease - Folliculitis",
+    "history": "Patient has a history of recurrent folliculitis episodes, particularly during summer months. Previous episodes were successfully treated with topical antibiotics. No known allergies to medications. Occasional use of hair removal products in affected areas. Works in a humid environment which may contribute to condition recurrence."
+  },
+  "input": {
+    "image_path": "test.jpg"
+  },
+  "generation": {
+    "diagnosis": {
+      "max_new_tokens": 1200,
+      "min_new_tokens": 200,
+      "do_sample": true,
+      "temperature": 0.4,
+      "top_p": 0.9,
+      "top_k": 50,
+      "repetition_penalty": 1.05,
+      "length_penalty": 1.0,
+      "no_repeat_ngram_size": 3,
+      "use_cache": true,
+      "early_stopping": false,
+      "pad_token_id": null,
+      "eos_token_id": null
+    },
+    "analysis": {
+      "max_new_tokens": 60,
+      "min_new_tokens": 15,
+      "do_sample": true,
+      "temperature": 0.1,
+      "top_p": 0.9,
+      "repetition_penalty": 1.02,
+      "use_cache": true,
+      "word_limit": 25
+    }
+  },
+  "output": {
+    "reports_directory": "reports",
+    "analysis_filename": "image_analysis.txt",
+    "diagnosis_filename_template": "diagnosis_report_{patient_name}.md"
+  },
+  "environment": {
+    "torch_compile_disable": "1",
+    "pytorch_disable_cuda_compilation": "1",
+    "torch_dynamo_disable": true,
+    "torch_dynamo_suppress_errors": true,
+    "enable_flash_sdp": false,
+    "float32_matmul_precision": "high"
+  },
+  "prompts": {
+    "diagnosis_template": "Bạn là một bác sĩ da liễu chuyên nghiệp. Hãy tạo một báo cáo chẩn đoán da liễu chi tiết BẰNG TIẾNG VIỆT dựa trên hình ảnh và thông tin bệnh nhân được cung cấp.\n\nBệnh nhân: {patient_name}, {patient_age} tuổi, {patient_gender}\nPhân loại: {classification_result}\nTiền sử bệnh: {skin_history}\n\nHãy cung cấp phân tích chi tiết với các phần sau:\n**1. Quan sát trực quan về tình trạng da:**\n**2. Các chẩn đoán phân biệt:**\n**3. Phương pháp điều trị được khuyến nghị:**\n**4. Khuyến nghị theo dõi:**\n\nHãy trả lời hoàn toàn bằng tiếng Việt.",
+    "analysis_template": "Bạn là bác sĩ da liễu chuyên nghiệp phân tích hình ảnh y tế cho bệnh nhân {patient_name}, {patient_gender} {patient_age} tuổi với chẩn đoán {classification}.\n\nTiền sử bệnh nhân: {history}\n\nPhân tích hình ảnh y tế này và cung cấp một câu ngắn gọn mô tả những gì bạn quan sát được BẰNG TIẾNG VIỆT. Tập trung vào các đặc điểm trực quan nổi bật nhất và tình trạng da có thể có. Giữ dưới {word_limit} từ.",
+    "system_message_diagnosis": "Bạn là bác sĩ da liễu chuyên nghiệp có nhiều kinh nghiệm trong chẩn đoán các bệnh về da. Luôn trả lời bằng tiếng Việt.",
+    "system_message_analysis": "Bạn là bác sĩ da liễu chuyên nghiệp. Cung cấp phân tích hình ảnh y tế ngắn gọn và chính xác bằng tiếng Việt."
+  }
+}

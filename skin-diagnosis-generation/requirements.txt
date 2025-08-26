@@ -1,0 +1,28 @@
+# VLM Server Dependencies for MedGemma 4B
+# Web Framework
+fastapi
+uvicorn[standard]
+python-multipart
+aiofiles
+pydantic-settings
+
+# AI/ML Libraries
+transformers
+torch
+torchvision
+torchaudio
+
+# Image Processing
+pillow
+
+# Model Optimization
+bitsandbytes
+
+# Document Processing
+markdown
+reportlab
+beautifulsoup4
+
+# Utilities
+requests
+numpy
