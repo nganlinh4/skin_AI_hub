@@ -185,6 +185,13 @@ attention_maps_backup/
 training_history.png
 confusion_matrix.png
 
+# Exception: Allow images in final_report folder
+!final_report/*.png
+!final_report/*.jpg
+!final_report/*.jpeg
+!final_report/*.gif
+!final_report/*.mp4
+
 # Virtual environment
 skin_venv/
 venv/
