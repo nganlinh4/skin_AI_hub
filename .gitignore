@@ -182,8 +182,10 @@ skin_classifier_model.pth
 *.jpeg
 attention_maps/
 attention_maps_backup/
-training_history.png
-confusion_matrix.png
+
+# Exception: Allow specific images in root directory
+!training_history.png
+!confusion_matrix.png
 
 # Exception: Allow images in final_report folder
 !final_report/*.png
