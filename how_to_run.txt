@@ -1,0 +1,5 @@
+cd skin-diagnosis-generation ; venv\Scripts\Activate.ps1 ; python restart_server.py
+source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 3026
+
+cd skin-diagnosis-generation ; venv\Scripts\Activate.ps1 ; cd ..\web_demo
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload

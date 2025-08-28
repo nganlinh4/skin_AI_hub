@@ -1,0 +1,57 @@
+{
+  "accuracy": 0.9874476987447699,
+  "avg_inference_time": 0.004834373792012532,
+  "batch_inference_time": 0.005134316667852043,
+  "total_test_images": 478,
+  "classification_report": {
+    "Acne": {
+      "precision": 0.9850746268656716,
+      "recall": 0.9705882352941176,
+      "f1-score": 0.9777777777777777,
+      "support": 68.0
+    },
+    "Carcinoma": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 74.0
+    },
+    "Eczema": {
+      "precision": 0.9690721649484536,
+      "recall": 0.9894736842105263,
+      "f1-score": 0.9791666666666666,
+      "support": 95.0
+    },
+    "Keratosis": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 89.0
+    },
+    "Milia": {
+      "precision": 0.9743589743589743,
+      "recall": 1.0,
+      "f1-score": 0.987012987012987,
+      "support": 76.0
+    },
+    "Rosacea": {
+      "precision": 1.0,
+      "recall": 0.9605263157894737,
+      "f1-score": 0.9798657718120806,
+      "support": 76.0
+    },
+    "accuracy": 0.9874476987447699,
+    "macro avg": {
+      "precision": 0.9880842943621833,
+      "recall": 0.986764705882353,
+      "f1-score": 0.9873038672115854,
+      "support": 478.0
+    },
+    "weighted avg": {
+      "precision": 0.9876531639084745,
+      "recall": 0.9874476987447699,
+      "f1-score": 0.9874320248806011,
+      "support": 478.0
+    }
+  }
+}
