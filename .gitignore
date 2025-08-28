@@ -224,3 +224,4 @@ config.ini
 secrets.json
 .secrets
 segmentation_results/
+reports

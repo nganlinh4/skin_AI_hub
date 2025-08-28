@@ -427,7 +427,7 @@ class DiagnosisService:
             gen_kwargs = {
                 'max_new_tokens': min(max_tokens, generation_config.get('max_new_tokens', max_tokens)),
                 'do_sample': generation_config.get('do_sample', False),
-                'use_cache': generation_config.get('use_cache', True),
+                'use_cache': False,  # Disable caching to avoid inference mode conflicts
                 'pad_token_id': generation_config.get('pad_token_id') or self.processor.tokenizer.eos_token_id,
                 'early_stopping': generation_config.get('early_stopping', False)
             }
@@ -443,11 +443,19 @@ class DiagnosisService:
             )
             gen_kwargs['streamer'] = streamer
 
+            # Generation function to run in separate thread
+            def generate_with_proper_context():
+                try:
+                    # Use no_grad instead of inference_mode for streaming to avoid cache conflicts
+                    with torch.no_grad():
+                        self.model.generate(**inputs, **gen_kwargs)
+                except Exception as e:
+                    logger.error(f"Error in generation thread: {e}")
+                    # Signal the streamer to stop
+                    streamer.end()
+
             # Start generation in a separate thread
-            generation_thread = threading.Thread(
-                target=self.model.generate,
-                kwargs={**inputs, **gen_kwargs}
-            )
+            generation_thread = threading.Thread(target=generate_with_proper_context)
             generation_thread.start()
 
             # Yield tokens as they are generated
