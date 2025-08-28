@@ -6,7 +6,7 @@ AI-powered medical image analysis using Google's MedGemma 4B model with FastAPI 
 
 **Start the API server:**
 ```bash
-cd skin-diagnosis-generation ; venv\Scripts\Activate.ps1 ; uvicorn app.main:app --host 0.0.0.0 --port 3026
+cd skin-diagnosis-generation ; venv\Scripts\Activate.ps1 ; python restart_server.py
 source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 3026
 ```
 

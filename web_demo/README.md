@@ -26,6 +26,7 @@ copy .env.example .env  # then edit if needed
 ## Run
 
 ```
+cd skin-diagnosis-generation ; venv\Scripts\Activate.ps1 ; cd ..\web_demo
 uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
