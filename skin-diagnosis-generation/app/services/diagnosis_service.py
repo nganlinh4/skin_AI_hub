@@ -199,9 +199,41 @@ class DiagnosisService:
             logger.warning("CUDA not available, using CPU")
             return False
 
-    async def _load_image(self, image_path: str) -> Image.Image:
-        """Load and prepare image"""
-        return Image.open(image_path).convert('RGB')
+    async def _load_image(self, image_path: str, max_size: Optional[int] = None) -> Image.Image:
+        """
+        Load and prepare image with automatic resizing to prevent VRAM issues
+        
+        Args:
+            image_path: Path to the image file
+            max_size: Maximum dimension (width or height) in pixels (uses settings.MAX_IMAGE_SIZE if None)
+        
+        Returns:
+            PIL Image object, resized if necessary
+        """
+        image = Image.open(image_path).convert('RGB')
+        
+        # Use configured max size if not specified
+        if max_size is None:
+            max_size = settings.MAX_IMAGE_SIZE
+        
+        # Get current dimensions
+        width, height = image.size
+        
+        # Check if resizing is needed
+        if width > max_size or height > max_size:
+            # Calculate the resize ratio to maintain aspect ratio
+            ratio = min(max_size / width, max_size / height)
+            new_width = int(width * ratio)
+            new_height = int(height * ratio)
+            
+            logger.info(f"Resizing image from {width}x{height} to {new_width}x{new_height} to prevent VRAM issues")
+            
+            # Use high-quality resampling
+            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        else:
+            logger.info(f"Image size {width}x{height} is within limits, no resizing needed")
+        
+        return image
 
     async def analyze_image(self, image_path: str, patient_info: Dict[str, Any], language: str = "en") -> Tuple[str, str]:
         """
@@ -412,6 +444,7 @@ class DiagnosisService:
         try:
             from transformers import TextIteratorStreamer
             import threading
+            import queue
 
             # Process the input
             inputs = self.processor.apply_chat_template(
@@ -427,7 +460,7 @@ class DiagnosisService:
             gen_kwargs = {
                 'max_new_tokens': min(max_tokens, generation_config.get('max_new_tokens', max_tokens)),
                 'do_sample': generation_config.get('do_sample', False),
-                'use_cache': False,  # Disable caching to avoid inference mode conflicts
+                'use_cache': generation_config.get('use_cache', True),
                 'pad_token_id': generation_config.get('pad_token_id') or self.processor.tokenizer.eos_token_id,
                 'early_stopping': generation_config.get('early_stopping', False)
             }
@@ -435,35 +468,34 @@ class DiagnosisService:
             # Filter out None values
             gen_kwargs = {k: v for k, v in gen_kwargs.items() if v is not None}
 
-            # Create streamer
+            # Create streamer with timeout support
             streamer = TextIteratorStreamer(
                 self.processor.tokenizer,
                 skip_prompt=True,
-                skip_special_tokens=True
+                skip_special_tokens=True,
+                timeout=30.0  # 30 second timeout per token
             )
             gen_kwargs['streamer'] = streamer
 
-            # Generation function to run in separate thread
-            def generate_with_proper_context():
-                try:
-                    # Use no_grad instead of inference_mode for streaming to avoid cache conflicts
-                    with torch.no_grad():
-                        self.model.generate(**inputs, **gen_kwargs)
-                except Exception as e:
-                    logger.error(f"Error in generation thread: {e}")
-                    # Signal the streamer to stop
-                    streamer.end()
-
             # Start generation in a separate thread
-            generation_thread = threading.Thread(target=generate_with_proper_context)
+            generation_thread = threading.Thread(
+                target=self.model.generate,
+                kwargs={**inputs, **gen_kwargs}
+            )
             generation_thread.start()
 
-            # Yield tokens as they are generated
-            for token in streamer:
-                yield token
-
-            # Wait for generation to complete
-            generation_thread.join()
+            # Yield tokens as they are generated with timeout handling
+            try:
+                for token in streamer:
+                    yield token
+            except queue.Empty:
+                logger.error("Generation timeout - model appears to be stuck")
+                raise TimeoutError("Model generation timed out")
+            finally:
+                # Ensure thread completes
+                generation_thread.join(timeout=5.0)
+                if generation_thread.is_alive():
+                    logger.error("Generation thread did not complete cleanly")
 
         except Exception as e:
             logger.error(f"Error during streaming generation: {e}")

@@ -233,7 +233,153 @@ async def download_report(filename: str):
         media_type=media_type
     )
 
-# Note: PDF generation endpoints removed - use /diagnose endpoint which already generates PDFs
+@router.post("/generate-pdf")
+async def generate_pdf_on_demand(
+    image: UploadFile = File(..., description="Medical image file"),
+    patient_name: str = Form(..., description="Patient name"),
+    patient_age: int = Form(..., description="Patient age"),
+    patient_gender: str = Form(..., description="Patient gender"),
+    language: str = Form("en", description="Language for diagnosis (en, ko, vi)"),
+    diagnosis_service: DiagnosisService = Depends(get_diagnosis_service)
+):
+    """
+    Generate PDF report on-demand (for download button)
+    """
+    
+    try:
+        # Validate image file
+        validate_image_file(image)
+        
+        # Save uploaded image
+        image_path = await save_uploaded_file(image, "on_demand.jpg")
+        
+        # Prepare patient information
+        patient_info = {
+            "name": patient_name,
+            "age": patient_age,
+            "gender": patient_gender,
+            "classification": "Skin Condition",
+            "history": "No medical history provided"
+        }
+        
+        # Start timing
+        start_time = time.time()
+        
+        # Perform analysis
+        logger.info(f"Starting on-demand PDF generation for patient: {patient_name}")
+        concise_analysis, comprehensive_report = await diagnosis_service.analyze_image(
+            image_path, patient_info, language
+        )
+        
+        # Calculate generation time
+        generation_time = time.time() - start_time
+        
+        # Generate reports
+        report_generator = ReportGenerator()
+        file_paths = await report_generator.generate_diagnosis_reports(
+            patient_info, concise_analysis, comprehensive_report, image_path, language
+        )
+
+        # Create response with actual file URLs
+        api_files = {
+            "markdown_report": f"/api/v1/reports/{file_paths['markdown_filename']}",
+            "pdf_report": f"/api/v1/reports/{file_paths['pdf_filename']}"
+        }
+        
+        logger.info(f"On-demand PDF generation completed for {patient_name} in {generation_time:.2f}s")
+        
+        return {
+            "success": True,
+            "patient_name": patient_name,
+            "files": api_files,
+            "generation_time": generation_time
+        }
+        
+    except Exception as e:
+        logger.error(f"Error during on-demand PDF generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
+        # Cleanup uploaded file
+        if 'image_path' in locals() and os.path.exists(image_path):
+            try:
+                os.remove(image_path)
+            except:
+                pass
+
+@router.post("/generate-pdf-fast")
+async def generate_pdf_fast(
+    image: UploadFile = File(..., description="Medical image file"),
+    patient_name: str = Form(..., description="Patient name"),
+    patient_age: int = Form(..., description="Patient age"),
+    patient_gender: str = Form(..., description="Patient gender"),
+    language: str = Form("en", description="Language for diagnosis (en, ko, vi)"),
+    diagnosis_service: DiagnosisService = Depends(get_diagnosis_service)
+):
+    """
+    Generate PDF report quickly using existing analysis (fast)
+    """
+    
+    try:
+        # Validate image file
+        validate_image_file(image)
+        
+        # Save uploaded image
+        image_path = await save_uploaded_file(image, "fast_pdf.jpg")
+        
+        # Prepare patient information
+        patient_info = {
+            "name": patient_name,
+            "age": patient_age,
+            "gender": patient_gender,
+            "classification": "Skin Condition",
+            "history": "No medical history provided"
+        }
+        
+        # Start timing
+        start_time = time.time()
+        
+        # Perform quick analysis (reuse existing analysis if possible)
+        logger.info(f"Starting fast PDF generation for patient: {patient_name}")
+        concise_analysis, comprehensive_report = await diagnosis_service.analyze_image(
+            image_path, patient_info, language
+        )
+        
+        # Calculate generation time
+        generation_time = time.time() - start_time
+        
+        # Generate reports quickly
+        report_generator = ReportGenerator()
+        file_paths = await report_generator.generate_diagnosis_reports(
+            patient_info, concise_analysis, comprehensive_report, image_path, language
+        )
+
+        # Create response with actual file URLs
+        api_files = {
+            "markdown_report": f"/api/v1/reports/{file_paths['markdown_filename']}",
+            "pdf_report": f"/api/v1/reports/{file_paths['pdf_filename']}"
+        }
+        
+        logger.info(f"Fast PDF generation completed for {patient_name} in {generation_time:.2f}s")
+        
+        return {
+            "success": True,
+            "patient_name": patient_name,
+            "files": api_files,
+            "generation_time": generation_time
+        }
+        
+    except Exception as e:
+        logger.error(f"Error during fast PDF generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
+        # Cleanup uploaded file
+        if 'image_path' in locals() and os.path.exists(image_path):
+            try:
+                os.remove(image_path)
+            except:
+                pass
 
 @router.get("/models")
 async def list_models():
@@ -258,11 +404,244 @@ async def list_models():
         "current_model": settings.MODEL_TYPE
     }
 
-# Note: Multipart streaming endpoint removed - use /analyze-stream-simple which handles base64 images more reliably
+@router.post("/analyze-stream")
+async def analyze_image_stream(
+    image: UploadFile = File(..., description="Medical image file"),
+    patient_name: str = Form(..., description="Patient name"),
+    patient_age: int = Form(..., description="Patient age"),
+    patient_gender: str = Form(..., description="Patient gender"),
+    classification: str = Form(None, description="Medical classification"),
+    history: str = Form(None, description="Medical history"),
+    language: str = Form("en", description="Language for analysis (en, ko, vi)"),
+    diagnosis_service: DiagnosisService = Depends(get_diagnosis_service)
+):
+    """
+    Stream quick concise analysis of medical image in real-time
 
-# Note: Multipart streaming endpoint removed - use /diagnose-stream-simple which handles base64 images more reliably
+    Returns Server-Sent Events with streaming text generation.
+    """
 
-# Note: Test streaming endpoints removed from production code
+    async def generate_stream():
+        image_path = None
+        try:
+            logger.info(f"Starting streaming analysis for patient: {patient_name}")
+
+            # Simple approach: Create a temporary file directly without using save_uploaded_file
+            # since the file might be closed when coming through the proxy
+
+            # Basic validation
+            if not image.filename:
+                raise HTTPException(status_code=400, detail="No filename provided")
+
+            # Create temporary file path
+            temp_filename = f"stream_analysis_{uuid.uuid4().hex[:8]}.jpg"
+            image_path = os.path.join(settings.UPLOAD_DIR, temp_filename)
+
+            # Ensure upload directory exists
+            os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
+            # Read file content properly
+            try:
+                content = await image.read()
+                logger.info(f"Successfully read {len(content)} bytes from uploaded file")
+
+                # Write to temporary file
+                with open(image_path, 'wb') as f:
+                    f.write(content)
+                logger.info(f"Image saved successfully to: {image_path}")
+
+            except Exception as file_error:
+                logger.error(f"Could not read uploaded file: {file_error}")
+                raise HTTPException(status_code=500, detail=f"Could not process uploaded file: {file_error}")
+
+            # Prepare patient information
+            patient_info = {
+                "name": patient_name,
+                "age": patient_age,
+                "gender": patient_gender,
+                "classification": classification or "Skin Condition",
+                "history": history or "No medical history provided"
+            }
+
+            # Load image using the working method
+            loaded_image = await diagnosis_service._load_image(image_path)
+            logger.info(f"Image loaded successfully, size: {loaded_image.size}")
+
+            # Send start event
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting analysis...'})}\n\n"
+
+            # Stream analysis
+            logger.info("Starting streaming text generation...")
+            full_text = ""
+            token_count = 0
+            async for token in diagnosis_service._generate_concise_analysis_stream(loaded_image, patient_info, language):
+                full_text += token
+                token_count += 1
+                yield f"data: {json.dumps({'type': 'token', 'token': token, 'full_text': full_text})}\n\n"
+
+            logger.info(f"Streaming completed. Generated {token_count} tokens, total length: {len(full_text)}")
+
+            # Send completion event
+            yield f"data: {json.dumps({'type': 'complete', 'full_text': full_text, 'patient_name': patient_name})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error during streaming analysis: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+        finally:
+            # Cleanup uploaded file
+            if image_path and os.path.exists(image_path):
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
+
+@router.post("/diagnose-stream")
+async def diagnose_skin_condition_stream(
+    image: UploadFile = File(..., description="Medical image file"),
+    patient_name: str = Form(..., description="Patient name"),
+    patient_age: int = Form(..., description="Patient age"),
+    patient_gender: str = Form(..., description="Patient gender"),
+    classification: str = Form(None, description="Medical classification"),
+    history: str = Form(None, description="Medical history"),
+    language: str = Form("en", description="Language for analysis (en, ko, vi)"),
+    diagnosis_service: DiagnosisService = Depends(get_diagnosis_service)
+):
+    """
+    Stream comprehensive diagnosis of medical image in real-time
+
+    Returns Server-Sent Events with streaming text generation.
+    """
+
+    async def generate_stream():
+        image_path = None
+        try:
+            logger.info(f"Starting streaming diagnosis for patient: {patient_name}")
+
+            # Use the same file handling approach as the working /diagnose endpoint
+            # Validate image file first
+            validate_image_file(image)
+
+            # Save uploaded image using the working method
+            image_path = await save_uploaded_file(image, "stream_diagnosis.jpg")
+            logger.info(f"Image saved successfully to: {image_path}")
+
+            # Prepare patient information
+            patient_info = {
+                "name": patient_name,
+                "age": patient_age,
+                "gender": patient_gender,
+                "classification": classification or "Skin Condition",
+                "history": history or "No medical history provided"
+            }
+
+            # Load image using the working method
+            loaded_image = await diagnosis_service._load_image(image_path)
+            logger.info(f"Image loaded successfully, size: {loaded_image.size}")
+
+            # Send start event
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting comprehensive diagnosis...'})}\n\n"
+
+            # Stream diagnosis
+            full_text = ""
+            async for token in diagnosis_service._generate_diagnosis_report_stream(loaded_image, patient_info, language):
+                full_text += token
+                yield f"data: {json.dumps({'type': 'token', 'token': token, 'full_text': full_text})}\n\n"
+
+            # Send completion event
+            yield f"data: {json.dumps({'type': 'complete', 'full_text': full_text, 'patient_name': patient_name})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error during streaming diagnosis: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+        finally:
+            # Cleanup uploaded file
+            if image_path and os.path.exists(image_path):
+                try:
+                    os.remove(image_path)
+                except:
+                    pass
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
+
+@router.post("/test-stream")
+async def test_streaming_without_file(
+    patient_name: str = Form(..., description="Patient name"),
+    diagnosis_service: DiagnosisService = Depends(get_diagnosis_service)
+):
+    """
+    Test streaming text generation without file upload to isolate the streaming functionality
+    """
+
+    async def generate_test_stream():
+        try:
+            logger.info(f"Starting test streaming for patient: {patient_name}")
+
+            # Send start event
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Starting test streaming...'})}\n\n"
+
+            # Create a simple test prompt (no image required)
+            messages = [
+                {
+                    "role": "system",
+                    "content": [{"type": "text", "text": "You are a helpful medical assistant."}]
+                },
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": f"Please provide a brief medical analysis for patient {patient_name}. This is a test of the streaming functionality."}]
+                }
+            ]
+
+            # Stream text generation
+            full_text = ""
+            token_count = 0
+            logger.info("Starting test streaming text generation...")
+
+            async for token in diagnosis_service._generate_response_stream(messages, max_tokens=100):
+                full_text += token
+                token_count += 1
+                yield f"data: {json.dumps({'type': 'token', 'token': token, 'full_text': full_text})}\n\n"
+
+            logger.info(f"Test streaming completed. Generated {token_count} tokens, total length: {len(full_text)}")
+
+            # Send completion event
+            yield f"data: {json.dumps({'type': 'complete', 'full_text': full_text, 'patient_name': patient_name})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Error during test streaming: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_test_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
 
 @router.post("/analyze-stream-simple")
 async def analyze_image_stream_simple(
@@ -459,6 +838,7 @@ async def diagnose_stream_simple(
             # Stream diagnosis
             full_text = ""
             token_count = 0
+            
             async for token in diagnosis_service._generate_diagnosis_report_stream(loaded_image, patient_info, language):
                 full_text += token
                 token_count += 1
@@ -606,7 +986,9 @@ async def diagnose_stream_simple(
                 yield f"data: {json.dumps({'type': 'complete', 'full_text': full_text, 'patient_name': patient_name})}\n\n"
 
         except Exception as e:
-            logger.error(f"Error during simple streaming diagnosis: {e}")
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Error during simple streaming diagnosis: {e}\nTraceback:\n{error_details}")
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
         finally:
@@ -628,5 +1010,41 @@ async def diagnose_stream_simple(
         }
     )
 
-# Note: Test streaming endpoints removed from production code
+@router.get("/test-simple-stream")
+async def test_simple_stream():
+    """
+    Ultra simple streaming test - just send characters one by one
+    """
+
+    async def generate_simple_stream():
+        import asyncio
+
+        test_message = "Hello, this is a streaming test. Each word should appear one by one."
+        words = test_message.split()
+
+        # Send start
+        yield f"data: {json.dumps({'type': 'start', 'message': 'Starting simple test...'})}\n\n"
+
+        accumulated = ""
+        for i, word in enumerate(words):
+            accumulated += word + " "
+            yield f"data: {json.dumps({'type': 'token', 'token': word + ' ', 'full_text': accumulated})}\n\n"
+
+            # Wait 500ms between words to make it very obvious
+            await asyncio.sleep(0.5)
+
+        # Send completion
+        yield f"data: {json.dumps({'type': 'complete', 'full_text': accumulated})}\n\n"
+
+    return StreamingResponse(
+        generate_simple_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
 

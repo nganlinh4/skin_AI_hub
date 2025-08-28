@@ -38,36 +38,79 @@ except ImportError:
 
 def register_multilingual_fonts():
     """Register fonts that support Vietnamese, Korean, and other Unicode characters."""
+    import platform
+    
     try:
-        # Priority 1: Try regular Noto Sans (limited Korean support but better than DejaVu)
-        noto_regular = '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf'
-        noto_bold = '/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf'
+        # Check if we're on Windows
+        if platform.system() == 'Windows':
+            # Windows font paths
+            windows_font_dir = os.path.join(os.environ['WINDIR'], 'Fonts')
+            
+            # Priority 1: Arial Unicode MS (best support for Vietnamese and Korean on Windows)
+            arial_unicode = os.path.join(windows_font_dir, 'ARIALUNI.TTF')
+            if os.path.exists(arial_unicode):
+                pdfmetrics.registerFont(TTFont('ArialUnicode', arial_unicode))
+                print("Using Arial Unicode MS font (full Vietnamese/Korean support)")
+                return 'ArialUnicode', 'ArialUnicode'
+            
+            # Priority 2: Segoe UI (good Vietnamese support, included in Windows)
+            segoe_regular = os.path.join(windows_font_dir, 'segoeui.ttf')
+            segoe_bold = os.path.join(windows_font_dir, 'segoeuib.ttf')
+            if os.path.exists(segoe_regular) and os.path.exists(segoe_bold):
+                pdfmetrics.registerFont(TTFont('SegoeUI', segoe_regular))
+                pdfmetrics.registerFont(TTFont('SegoeUI-Bold', segoe_bold))
+                print("Using Segoe UI fonts (good Vietnamese support)")
+                return 'SegoeUI-Bold', 'SegoeUI'
+            
+            # Priority 3: Times New Roman (basic Vietnamese support)
+            times_regular = os.path.join(windows_font_dir, 'times.ttf')
+            times_bold = os.path.join(windows_font_dir, 'timesbd.ttf')
+            if os.path.exists(times_regular) and os.path.exists(times_bold):
+                pdfmetrics.registerFont(TTFont('TimesNewRoman', times_regular))
+                pdfmetrics.registerFont(TTFont('TimesNewRoman-Bold', times_bold))
+                print("Using Times New Roman fonts (basic Vietnamese support)")
+                return 'TimesNewRoman-Bold', 'TimesNewRoman'
+            
+            # Priority 4: Arial (limited Vietnamese support)
+            arial_regular = os.path.join(windows_font_dir, 'arial.ttf')
+            arial_bold = os.path.join(windows_font_dir, 'arialbd.ttf')
+            if os.path.exists(arial_regular) and os.path.exists(arial_bold):
+                pdfmetrics.registerFont(TTFont('Arial', arial_regular))
+                pdfmetrics.registerFont(TTFont('Arial-Bold', arial_bold))
+                print("Using Arial fonts (limited Vietnamese support)")
+                return 'Arial-Bold', 'Arial'
+        
+        else:
+            # Linux/Unix font paths
+            # Priority 1: Try regular Noto Sans (limited Korean support but better than DejaVu)
+            noto_regular = '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf'
+            noto_bold = '/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf'
 
-        if os.path.exists(noto_regular) and os.path.exists(noto_bold):
-            pdfmetrics.registerFont(TTFont('NotoSans', noto_regular))
-            pdfmetrics.registerFont(TTFont('NotoSans-Bold', noto_bold))
-            print("Using regular Noto Sans fonts (limited Korean support)")
-            return 'NotoSans-Bold', 'NotoSans'
+            if os.path.exists(noto_regular) and os.path.exists(noto_bold):
+                pdfmetrics.registerFont(TTFont('NotoSans', noto_regular))
+                pdfmetrics.registerFont(TTFont('NotoSans-Bold', noto_bold))
+                print("Using regular Noto Sans fonts (limited Korean support)")
+                return 'NotoSans-Bold', 'NotoSans'
 
-        # Priority 2: DejaVu Sans (fallback)
-        dejavu_regular = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-        dejavu_bold = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+            # Priority 2: DejaVu Sans (fallback)
+            dejavu_regular = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+            dejavu_bold = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 
-        if os.path.exists(dejavu_regular) and os.path.exists(dejavu_bold):
-            pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_regular))
-            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', dejavu_bold))
-            print("Using DejaVu Sans fonts (minimal Korean support)")
-            return 'DejaVuSans-Bold', 'DejaVuSans'
+            if os.path.exists(dejavu_regular) and os.path.exists(dejavu_bold):
+                pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_regular))
+                pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', dejavu_bold))
+                print("Using DejaVu Sans fonts (minimal Korean support)")
+                return 'DejaVuSans-Bold', 'DejaVuSans'
 
-        # Priority 3: Liberation fonts
-        liberation_regular = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
-        liberation_bold = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'
+            # Priority 3: Liberation fonts
+            liberation_regular = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+            liberation_bold = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'
 
-        if os.path.exists(liberation_regular) and os.path.exists(liberation_bold):
-            pdfmetrics.registerFont(TTFont('LiberationSans', liberation_regular))
-            pdfmetrics.registerFont(TTFont('LiberationSans-Bold', liberation_bold))
-            print("Using Liberation Sans fonts (no Korean support)")
-            return 'LiberationSans-Bold', 'LiberationSans'
+            if os.path.exists(liberation_regular) and os.path.exists(liberation_bold):
+                pdfmetrics.registerFont(TTFont('LiberationSans', liberation_regular))
+                pdfmetrics.registerFont(TTFont('LiberationSans-Bold', liberation_bold))
+                print("Using Liberation Sans fonts (no Korean support)")
+                return 'LiberationSans-Bold', 'LiberationSans'
 
     except Exception as e:
         print(f"Warning: Could not register multilingual fonts: {e}")

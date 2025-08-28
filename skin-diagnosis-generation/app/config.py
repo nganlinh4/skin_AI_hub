@@ -20,10 +20,13 @@ class Settings(BaseSettings):
     CONFIG_FILE: str = "test.json"
     
     # File Configuration
-    REPORTS_DIR: str = "../reports/vlm"  # Store in project reports directory
-    UPLOAD_DIR: str = "/tmp/uploads"
+    REPORTS_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports", "vlm")
+    UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tmp", "uploads")
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: List[str] = ["jpg", "jpeg", "png"]
+    
+    # Image processing
+    MAX_IMAGE_SIZE: int = 1024  # Maximum dimension in pixels to prevent VRAM issues
     
     # GPU Configuration
     CUDA_VISIBLE_DEVICES: str = "0"
